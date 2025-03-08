@@ -9,7 +9,7 @@ El curso de Modelamiento Estadístico tiene como objetivo proporcionar las herra
 # 📖 Contenido
 
 - ## Material teórico: Apuntes y presentaciones sobre los conceptos clave del modelamiento estadístico.
-- [Clase 1 ](https://htmlpreview.github.io/? https://github.com/IrisAshimine/Modelamiento-Estad-stico/blob/main/Clase1/Unidad1.html)
+- [Clase 1 ](https://htmlpreview.github.io/?https://github.com/IrisAshimine/Modelamiento-Estad-stico/blob/main/Clase1/Unidad1.html)
 
 - Prácticas en R: Códigos y scripts en R para implementar modelos y analizar datos.
 
