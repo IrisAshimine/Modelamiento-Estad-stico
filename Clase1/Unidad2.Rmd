@@ -1,0 +1,564 @@
+---
+title: "Unidad 2: Modelo de regresión lineal muestral"
+subtitle: "Módulo 3: Modelamiento estadístico"
+author: "Iris Ashimine"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    css: style.css
+    theme: cerulean
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    collapsed: true
+    number_sections: true
+
+---
+
+# Mínimos Cuadrados Ordinarios: Introducción
+
+Debido a que normalmente contamos con datos muestrales, tenemos que
+estimar los parámetros poblacionales $\beta$ a partir de la información
+disponible.
+
+Recordemos el modelo de regresión lineal: 
+$$
+    y_i=x_i'\beta+e_i
+$$
+
+donde $y_i$ es una variable aleatoria (escalar), $x_i$ es un vector
+aleatorio de $K\times 1$ y $e_i$ es una variable aleatoria (escalar).
+
+# Motivación
+
+¿Cuál es el efecto de reducir el tamaño de clase en el rendimiento
+escolar?
+
+-   **Datos**: Todos los distritos escolares de escuelas K-6 y K-8 de
+    California (N=420)[^1].\
+
+-   **Variables**
+
+    -   Notas de examen de 5to grado (Standford-9 achievement test,
+    matemática y lectura), media del distrito *testscr*.
+
+    -   Ratio estudiantes por profesor *str*.
+
+[^1]: Esta base de datos corresponde a *CASchools* del paquete AER.
+
+![](D:/Universidad/ESTADISTICAS/Clase 1-2/str_CASchool.png){width=80%}
+
+
+**Modelo**
+
+$$
+    tescr_i=\beta_0+\beta_1str_i+e_i
+$$ donde $e_i$ contiene todos los factores que influyen sobre el
+rendimiento escolar además del tamaño de clase.
+
+## Efecto causal
+
+-   ¿Mide $\beta_1$ el efecto causal de aumentar el tamaño de clase
+    sobre el rendimiento académico?
+
+-   ¿Podemos saber cuál es el efecto de cambiar un estudiante de una
+    clase de 22 estudiantes a una clase de 17 estudiantes?
+
+Para responder esto, necesitamos imponer un supuesto sobre $e_i$.\
+Formalmente: $E(e_i|str_i)=0$.
+
+Intuitivamente, no debe haber diferencias en factores que puedan afectar
+el rendimiento académico en alumnos que asisten a escuelas con distintos
+tamaño de clase.
+
+-   Buscar factores que puedan afectar *el rendimiento académico y el
+    tamaño de clase*.
+
+-   Intuir si estos factores *difieren según el tamaño de clase*.
+
+Debido a que es imposible observar un *mismo* estudiante en una clase de
+17 y una de 22 alumnos de manera simultánea, ¿podemos comparar
+reusltados de estudiantes en clases de 17 y 22 alumnos?
+
+¿Bajo qué condiciones esta comparación podría permitir medir el efecto
+causal?
+
+## Proyecto STAR 
+Student-Teacher Achievement Ratio[^2] en Tennessee,
+EUA. El diseño de este proyecto se caracterizó por tres factores
+principales:
+
+[^2]: Proyecto llevado acabo entre 1985 y 1989, buscaba evaluar los
+    efectos del tamaño de clase sobre el desempeño escolar. Involucraron
+    6000 estudiantes de 75 escuelas. Sus resultados demostraron que
+    tamaños de clase más pequeños mejoraban significativamente el
+    desempeño de los estudiantes, particularmentente para estudiantes de
+    ingresos bajos y de minoría étnica.
+
+1.  Asignación aleatoria de estudiantes y profesores dentro de una misma
+    escuela.
+
+2.  Muestra diversa de escuelas (urbanas, rurales, suburbanas).
+
+3.  Control de factores externos: nivel socioeconómico, participación de
+    los padres, acceso a recursos, calidad de las instalaciones, apoyo
+    administrativo.
+
+De esta manera se compararon alumnos con variables *observables*
+similares, pero en clases de distintos tamaños asignadas aleatoriamente.
+Esto se conoce como **asignación aleatoria condicional en observables**.
+
+$$
+testscr_i=\beta_0+\beta_1str_i+\gamma'x_i+\epsilon_i
+$$ donde $x_i$ incluye variables observables como el ingreso,
+participación de los padres, calidad de instalaciones, etc.\
+Ahora $\beta_1$ si tiene una interpretación causal.
+
+# Identificación
+
+Para probar que los parámetros estimados mediante MCO son insesgados,
+son necesarios los siguientes supuestos:
+
+-   MCO1 Linealidad en los coeficientes y el término de error
+
+-   MCO2 Muestra aleatoria de tamaño N
+    $\rightarrow\{y_i,x_i\}^{N}_{i=1}$ i.i.d[^3].
+
+-   MCO3 No correlación entre las variables explicativas y el
+    inobservado[^4]:
+    $E(e_i|x_{1i},x_{2i},...)=E(e_i|x_{2i},x_{3i}...)$}: $E(x_ie_i)=0$.
+
+-   MCO4 No colinealidad perfecta entre las variables explicativas:
+    $E(x_i'x_i)$ es invertible.
+
+-   MCO5 Condiciones de regularidad para asegurar distribución
+    asintótica normal de los estimadores[^5]: $E(||x_i||^4)<\infty$ y
+    $E(y_i^4)<\infty$.
+
+[^3]: Independiente e idénticamente distribuido
+
+[^4]: La versión más debil de este supuesto solo implica **Independencia
+    de Condicional en Media**
+
+[^5]: Conocidas como "No fat tails", muchas veces ignoradas en la
+    práctica.
+
+Bajo estos supuestos se cumple que:
+
+```{=tex}
+\begin{align*}
+
+    E(\hat{\beta_1})&=\beta_1, y  \\ 
+
+    E(\hat{\beta_0})&=\beta_0
+
+\end{align*}
+```
+Si queremos escribir los parámetros como una función de momentos
+poblacionales, ¿qué momentos poblacionales permiten **identificar** los
+parámetros de interés?
+
+```{=tex}
+\begin{align*}
+
+    E(x_ie_i)&=0\; \text{usando MCO2}\\  
+
+    E[x_i(y_i -x_i'\beta)]&=0  \\
+
+    E(x_iy_i)-E(x_i'x_i)\beta&=0  \\
+
+    \beta &=E(x_i'x_i)^{-1}E(x_iy_i)\; \text{usando MCO3}
+
+\end{align*}
+```
+MCO2 y MCO3 son los supuestos que *identifican* $\beta$.
+
+# Estimación
+
+La estimación de los parámetros mediante MCO se puede realizar de dos
+maneras: mediante el principio de analogía o el método de momentos.
+Ambos requieren que se cumplan los supuestos establecidos previamente.
+
+## Principio de analogía
+
+Estamos interesados en:
+
+$$
+   \beta_1= E (x_i'x_i)^{-1}E(x_iy_i)
+$$
+
+Si MCO1 se cumple[^6], entonces podemos estimar la esperanza poblacional
+mediante la media muestral, es decir, reemplazar momentos poblacionales
+por momentos muestrales:
+
+[^6]: Este supuesto implica que si tomas dos individuos $i\neq j$ de la
+    muestra, sus valores $(y_i x_i)$ y $(y_j x_j)$ son independientes
+    pero que tienen la misma distribución. Este supuesto se puede romper
+    cuando los individuos de la muestra están conectados de alguna
+    manera, por ejemplo, si son vecinos, miembros de la misma comunidad,
+    compañeros de trabajo. Un enfoque popular que permite la dependencia
+    mutua se conoce como dependencia agrupada, que supone que las
+    observaciones se agrupan en *clusters*.
+
+$$
+\hat\beta=\left(\frac{1}{N}\sum_{i=1}^N(x_i'x_i)\right)^{-1}\frac{1}{N}\sum_{i=1}^N(x_i'y_i)
+$$
+
+## Método de momentos
+
+También podemos hacerlo mediante el método de momentos, debido a que en
+el modelo poblacional se cumple
+
+$$
+  E[x_i(y_i-x_i'\beta)]=0
+$$
+
+El estimador satisface una condición similar en la muestra tal que:
+
+$$
+    \frac{1}{N}\sum_{i=1}^Nx_i(y_i-x_i'\beta)=0
+$$
+
+Despejando $\hat\beta$
+
+$$
+    \hat\beta=\left(\frac{1}{N}\sum_{i=1}^Nx_i'x_i\right)^{-1}\frac{1}{N}\sum_{i=1}^Nx_iy_i
+$$ donde $X$ es una matriz de $N\times K$ e $Y$ es un vector de
+$N \times 1$.
+
+# Modelo de regresión simple
+
+Para estimar los parámetros del modelo de regresión más sencillo
+
+$$
+    y_i= \beta_0 +\beta_1 x_{1i}+u_i
+$$ Los parámetros poblacionales
+
+```{=tex}
+\begin{align*}
+
+    \beta_1&=\frac{Cov(x_{1i}y_i)}{Var(x_{1i})}  
+
+    \beta_0&=E(y_i)-\beta_1E(x_{1i})
+
+\end{align*}
+```
+El estimador MCO es
+
+```{=tex}
+\begin{align*}
+
+\hat{\beta_1}&=\frac{\hat{Cov}(x_{1i}y_i)}{\hat{Var(x_{1i})}}  \\
+
+\hat{\beta_0}&=\frac{1}{N}\sum_{i=1}^{N}y_i-\hat{\beta_1}\frac{1}{N}\sum_{i=1}^{N}x_{1i}
+
+\end{align*}
+```
+Retomando el ejemplo del tamaño de clase con datos de California.
+Deseamos estimar el modelo
+
+$$
+    testscr_i=\beta_0+\beta_1str_i+e_i
+$$ donde supondremos que $E(e_i|str_i)=0$, por tanto
+
+$$
+E(testscr_i|str_i)=\beta_0+\beta_1str_i
+$$
+
+donde los parámetros poblacionales tienen una interpretación causal y
+son calculados mediante
+
+$$
+  \beta_1=\frac{Cov(str_i,testscr_i)}{Var(str_i)},\\ \beta_0=E(testscr_i)-\beta_1E(str_i).
+$$
+
+Debido a que contamos con una muestra de 420 observaciones, estimaremos
+mediante **MCO** utilizando el principio de analogía, es decir
+reemplazando momentos poblacionales por momentos muestrales.
+
+
+\begin{align*}
+
+    &\beta_1=\frac{Cov(str_i,testscr_i)}{Var(str_i)} \rightarrow \hat\beta _1=\frac{\widehat {Cov}(str_i,testscr_i)}{\widehat{Var}(str_i)}  \\
+
+    &\beta_0=E(testscr_i)-\beta_1E(str_i)\rightarrow \hat{\beta_0}=\frac{1}{N}\sum_{i=1}^{N}testscr_i-\hat{\beta}_1\frac{1}{N}\sum_{i=1}^{N}str_i
+
+\end{align*}
+```{r scatterplot, echo =FALSE, warning=FALSE, message=FALSE}
+# Cargar las librerías necesarias
+library("AER")       # Econometría aplicada en R (provee conjuntos de datos y herramientas econométricas)
+library(tidyverse)   # Colección de paquetes para manipulación y visualización de datos
+library(ggplot2)     # Utilizado para crear gráficos
+library(dplyr)       # Manipulación de datos (seleccionar, filtrar, mutar, etc.)
+library(fixest)      # Modelos econométricos (MCO, efectos fijos, etc.)
+data("CASchools")  
+
+CASchools$str <- CASchools$students / CASchools$teachers  
+
+CASchools$testscr <- (CASchools$read + CASchools$math) / 2  
+
+model_1 <- feols(testscr ~ str, data = CASchools)  
+
+# Crear un tema personalizado para ggplot
+custom_theme <- theme_minimal() +    # Utilizar un tema minimalista
+  theme(
+    panel.grid = element_blank(),  # Eliminar las líneas de la cuadrícula
+    axis.line = element_line(color = "black"),  # Agregar líneas de ejes negras
+    axis.ticks = element_line(color = "black")  # Agregar marcas de ejes negras
+  )
+
+# Crear un gráfico de dispersión con línea de regresión
+ggplot(CASchools, aes(x = str, y = testscr)) + 
+  geom_point(color = "black", alpha = 0.6) +  # Puntos del gráfico de dispersión (negros, 60% de transparencia)
+  geom_smooth(method = "lm", color = "orange", se = FALSE) +  # Agregar línea de regresión (naranja, sin intervalo de confianza)
+  labs(
+    title = "Relacion entre tamano de clase y rendimiento academico",  # Título en español
+    x = "Relacion Estudiante-Profesor",  # Etiqueta del eje X
+    y = "Puntaje en la Prueba"  # Etiqueta del eje Y
+  ) + 
+  custom_theme
+```
+
+
+El resultado de la regresión realizada en R
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+summary(model_1)
+```
+
+# Homocedasticidad
+
+El supuesto de homocedasticidad habla sobre la varianza **condicional**
+de los errores de regresión $e$, es decir, el segundo momento
+condicional centrado alrededor del primer momento condicional. La
+varianza condicional del error se define como:
+
+$$
+   \sigma^2(x)=var[e|X]=E[e^2|x].
+$$ Es importante recalcar que la varianza condicional es una **función**
+de los regresores, en cambio la varianza incondicional $\sigma^2$ *por
+definición* no depende de $X$.
+
+Homocedasticidad es un caso en el que la varianza condicional del error
+no depende de $X$.
+
+$$
+  \sigma^2(x)=\sigma^2
+$$ Una idea equivocada es considerar que la homocedasticidad es un
+componente de una correcta especificación de una regresión y que la
+heterocedasticidad es una excepción o un error, sin embargo, en la
+práctica la heterocedasticidad es lo usual, mientras la homocedasticidad
+es poco usual y excepcional. En todos los trabajos empíricos se debe
+asumir que los errores son heterocedásticos.
+
+Por otro lado, el supuesto de homocedasticidad se impone también en
+desarrollos teóricos porque simplifica enormemente los cálculos al
+momento de estudiar las propiedades de los estimadores.
+
+## Teorema de Gauss-Markov
+
+Si se cumplen los supuestos MCO1 a MCO4 y adicionalmente el supuesto de
+homocedasticidad $E(e^2|x)=\sigma^2$, entonces el estimador MCO
+$\hat{\beta}$ es el Mejor Estimador Lineal Insesgado[^7], es decir,
+tiene la menor varianza (condicional en $X$) entre los estimadores
+insesgados y lineales.
+
+[^7]: BLUE en inglés.
+
+$$
+    Var[\hat\beta|X]\geq \sigma^2(X'X)^{-1}
+$$
+
+Este teorema dice que un estimador linear insesgado no puede tener una
+matriz de varianza meno que $\sigma^2(X'X)^{-1}$, y debido a que (bajo
+homocedasticidad) la varianza del estimador MCO cumple esta condición
+con igualdad, es que decimos que es el estimador linear insesgado más
+eficiente.
+
+# Propiedades algebraicas MCO
+
+-   $\sum_{i=1}^N \hat{e_i}=0$
+
+-   $\sum_{i=1}^N x_i\hat{e_i}=0$
+
+-   $\sum_{i=1}^N\hat{y_i}\hat{e}=0$
+
+La propiedad 1 deriva directamente de la Condición de Primer Orden para
+derivar $\beta_0$.
+
+Consideremos el modelo simple con intercepto
+
+$$
+    y_i=\beta_0+\beta_1x_i+e_i
+$$ Obetenemos los estimadores mediante MCO
+
+```{=tex}
+\begin{align*}
+
+    &argmin\sum_{i=1}^N(y_i-\hat{\beta_0}-\hat{\beta_1}x_i)^2  \\
+
+    &CPO \; de\;\beta_0:  \\
+
+    &\sum_{i=1}^N(y_i-\hat{\beta_0}-\hat{\beta_1}x_i)=0
+
+\end{align*}
+```
+y como lo que está dentro del paréntesis es $\hat{e}$, entonces por
+construcción
+
+$$
+  \sum_{i=1}^N\hat{e}_i=0
+$$ De manera similar, la propiedad 2 deriva de la CPO de $\beta_1$
+
+$$
+    \sum_{i=1}^Nx_i(y_i-\hat{\beta_0}-\hat{\beta_1}x_i)=0 
+$$ Como lo que está dentro del paréntesis es $\hat{e}_i$, entonces se
+cumple que
+
+$$
+    \sum_{i=1}^Nx_i\hat{e}_i=0
+$$
+
+Es decir, que la covarianza (y por tanto también la correlación) entre
+los residuos y las variables explicatorias siempre es cero.
+
+La tercera propiedad deriva de la anterior debido a que $\hat{y}_i$ es
+una función linear de las $x_i$por tanto los residuos y los valores
+ajustados tampoco están correlacionados.
+
+# Modelo de regresión lineal múltiple
+
+Los modelos de regresión lineal múltiple son una extensión del modelo de
+regresión lineal simple. En estos, el modelo de regresión involucra más
+de una variable explicativa o independiente.
+
+$$
+    y_i=\beta_0+\beta_1x_1+\beta_2x_2+...+\beta_kx_k+e
+$$
+
+Estos modelos nos permiten controlar por más de un factor que pueden
+afectar simultáneamente a la variable dependiente.
+
+**El estimador MCO en forma matricial:**
+
+$$
+    \hat{\beta}=(X'X)^{-1}(X'Y)
+$$
+
+De la misma manera que el modelo poblacional, para que $\hat\beta$ sea
+único, se requiere que no exista colinealidad perfecta entre las
+variables explicativas, en otras palabras, que la matriz '$(X'X)$ sea
+invertible.
+
+Adicionalmente, cuando tratamos con múltiples variables explicativas, es
+fundamental que se cumpla el siguiente supuesto:
+
+$$
+    E(e|x_1,x_2,...,x_k)=0
+$$ Quiere decir que ninguno de las variables explicativas pueden estar
+correlacionadas con factores inobservados.
+
+Cuando este supuesto se cumple el OLS es **insesgado**, sin embargo, si
+alguna variable relevante es omitida de la ecuación, tendremos un sesgo.
+Por otro lado, añadir una variable irrelevante o sobreespecificar el
+modelo no genera sesgo en los estimadores, pero sí afecta a la varianza
+de los demás estimadores OLS porque puede introducir multicolinealidad.
+
+## Sesgo de variable omitida
+
+El sesgo de variable omitida ocurre cuando en el modelo no incluímos una
+variable relevante, ya sea por falta de datos sobre dicha variable o por
+error en la especificación del modelo. Esto produce que nuestros
+estimadores tengan un sesgo, pero en la gran mayoría de los casos se
+puede conocer el signo de este sesgo.
+
+Tomemos el siguiente modelo de regresión poblacional que mide un efecto
+causal:
+
+$$
+    y_i=\beta_0+\beta_1x_{1i}+\beta_2x_{2i}+u_i
+$$
+
+Sin embargo, no podemos observar $x_{2i}$ y estimamos el modelo
+
+$$
+    y_i=\gamma_0+\gamma_1 x_{1i}+\epsilon_i
+$$
+
+El parámetro $\gamma_1$ se estimaría mediante
+
+$$
+    \hat{\gamma_1}=\frac{Cov(x_{1i},y_i)}{Var(x_{1i})}
+$$
+
+Sin embargo, $\beta_1\neq\gamma_1$ para ver esto calcuamos:
+
+\begin{align*}
+
+    \gamma_1&=\frac{Cov(x_{i1},\beta_0+\beta_1x_{1i}+\beta_2x_{2i}+u_i)}{Var(x_{1i})}  \\
+
+    &=\frac{Cov(x_{1i},\beta_0)+\beta_1Cov(x_{1i},x_{1i})+\beta_2Cov(x_{1i},x_{2i})+Cov(x_{1i},u_i)}{Var(x_{1i})}
+
+\end{align*}
+
+Distribuimos el denominador $Var(x_{1i})$ ; y como
+$Cov(x_{1i},x_{1i})=Var(x_{1i})$ este término se simplifica. Además
+$Cov(x_{1i},\beta_0)=0$ porque $\beta_0$ es un parámetro y por el
+supuesto MCO4 $Cov(x_{1i},u_i)=0$ . De tal manera que:
+
+
+\begin{align*}
+
+    \gamma_1&=\beta_1+\beta_2\frac{Cov(x_{1i},x_{2i})}{Var(x_{1i})}
+
+\end{align*}
+
+En el límite el sesgo asintótico de $\hat{\gamma_1}$:
+
+$$
+  \hat{\gamma}_1-\beta_1=\beta_2\frac{Cov(x_{1i},x_{2i})}{Var(x_{1i})}
+$$
+
+El signo de este sesgo depende así de dos relaciones: $\beta_2$ o el
+efecto de la variable omitida sobre la variable independiete y
+$Cov(x_{1i}, x_{2i})$[^8] o la relación entre la variable
+independiente incluida y la omitida.
+
+[^8]: La varianza por definición es siempre positiva.
+
+\subsubsubsection{Ejemplo: Efecto de educación en salarios}
+
+Supongamos que tenemos la regresión poblacional o modelo verdadero que
+relaciona el ingreso (medido en logaritmos) con los años de educación y
+la habilidad innata de las personas.
+
+$$
+    lwage_i=\beta_0+\beta_{educ}educ_i+\beta_{abil}abil_i+u_i
+$$ Sin embargo, debido a que no tenemos como medir la habilidad innata,
+no contamos con esa variable, por lo tanto esitmamos el siguiente modelo
+
+$$
+    lwage_i=\gamma_0+\gamma_{educ}educ_i+\epsilon_i
+$$
+
+Entonces nuestro parámetro estimado de educación tendrá un sesgo
+asintótico medido por
+
+```{=tex}
+\begin{align*}
+
+    \hat{\gamma}_{educ}&=\gamma_{educ}-\beta_{educ}\\  
+
+    &=\beta_{abil}\frac{Cov(educ_i,abil_i)}{Var(educ_i)}
+
+\end{align*}
+```
+Debido a que podemos defender que la relación entre la habilidad y el
+salario que gana un individuo es positiva $\beta_{abil}>0$ , y que la
+relación entre los años de educación y la habilidad también es positiva
+$Cov(educ_i,abil_i)>0$ entonces el signo del sesgo será también
+positivo.
+
+En este caso esto significaría un problema, debido a que estaríamos
+**sobre estimando** el efecto de la educación al utilizar la ecuación
+"corta".
