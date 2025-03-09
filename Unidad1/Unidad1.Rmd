@@ -5,6 +5,7 @@ author: "Iris Ashimine"
 output:
   html_document:
     css: style.css
+    lib_dir: libs
     theme: cerulean
     toc: true
     toc_depth: 3

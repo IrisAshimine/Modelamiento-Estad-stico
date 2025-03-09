@@ -2,10 +2,10 @@
 title: "Unidad 2: Modelo de regresión lineal muestral"
 subtitle: "Módulo 3: Modelamiento estadístico"
 author: "Iris Ashimine"
-date: "`r Sys.Date()`"
 output:
   html_document:
     css: style.css
+    lib_dir: libs
     theme: cerulean
     toc: true
     toc_depth: 3
