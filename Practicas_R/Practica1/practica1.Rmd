@@ -1,0 +1,94 @@
+---
+title: "Práctica clase 1"
+author: "Iris Ashimine"
+output: html_document
+---
+# Ejercicio 1 
+
+Un estudio reciente ha encontrado que la tasa de mortalidad de las personas que duermen entre 6 y 7 horas por noche es menor que la tasa de mortalidad de aquellas personas que duermen 8 o más horas. El estudio utilizó 1.1 millón de observaciones de una muestra aleatoria de bolivianos entre 30 y 102 años de edad. Cada persona en la muestra fue seguida por 4 años. La tasa de mortalidad para personas que duermen 7 horas fue calculada como el número de muertes durante los 4 años entre las personas que duermen 7 horas sobre el número de personas que duermen 7 horas en la muestra. Cálculos similares se realizaron sobre el resto de las categorías. Los resultados mostraron que los individuos que dormían 8 horas o más tenían una tasa de mortalidad superior.
+
+## Preguntas 
+
+En base a los resultados del estudio, ¿usted recomendaría a los bolivianos que duermen 9 horas por noche reducir las horas de sueño a 6 o 7 horas por noche si quieren prolongar sus vidas? ¿Por qué o por qué no? Explique.
+
+## Desarrollo
+
+De acuerdo con el enunciado, la relación entre horas de sueño y mortalidad, medida por el estudio, se basa en una relación entre ambas variables, que puede ser representada por la siguiente ecuación de regresión:
+
+$$
+mortality=\beta_0+\beta_1sleep+e
+$$
+Sin embargo, para que esta relación implique causalidad, el análisis debería cumplir ciertos supuestos que no se han abordado adecuadamente en el estudio. Concretamente, no debe haber endogeneidad, un problema que surge cuando existen factores no observados que afectan tanto las horas de sueño como la mortalidad.
+
+Por ejemplo, sea el caso que las personas que duermen más de 8 horas pueden hacerlo debido a problemas de salud preexistentes que también aumentan su riesgo de mortalidad. En este caso, no es el sueño excesivo lo que causa una mayor mortalidad, sino que ambas cosas son efectos de una tercera variable omitida: la salud. Es así que, la ecuación de regresión para incluir el estado de salud inicial sería:
+$$
+mortality=\gamma_0+\gamma_1sleep+\gamma_2health+v
+$$
+Por tanto, comparando ambos modelos, el efecto marginal de la salud respecto al segundo quedaría denotado como:
+
+$$
+\beta_1=\gamma_1+\gamma_2\frac{Cov(sleep, health)}{Var(sleep)}
+$$
+De esta manera, el sesgo estaría explicado por:
+- $\gamma_2$ es el coeficiente captura el estado inicial de la salud sobre la tasa de mortalidad; como el deterioro en el estado de salud suele aumentar la mortalidad, es razonable asumir que es positivo.
+- La covarianza entre ‘sleep‘ y ‘health‘ sería también positiva dado que las personas con problemas de salud tienden a necesitar más horas de sueño, ya que condiciones de salud precarias están asociadas con mayor fatiga.
+
+Como resultado, ___el sesgo de omitir la variable sería positivo___, implicando que $\beta_1$ es mayor que el verdadero coeficiente $\gamma_1$, implicando una sobreestimación del efecto de las horas de sueño sobre la mortalidad.
+
+# Ejercicio 2
+
+Utilizando los datos WAGE2.dta del paper de Blackburn and Neumark (QJE, 1992) sobre los retornos de la educación.
+
+  1. Utilice un modelo de regresión simple para estimar el efecto de un año adicional de eduación ($educ$) en salarios ($wage$). Interprete los resultados. ¿Usted piensa que el coeficiente estimado mide una relación causal? Explique
+  2. El modelo de regresión simple omite, entre otras cosas, la habilidad innata. Al omitir los datos de habilidad innata,¿usted piensa que la estimación de un año adicional de educación tiene un sesgo positivo o negativo?
+  3. En los datos existe una proxy de habilidad innata: $IQ$. Incluya $IQ$ como variable explicativa adicional. Interprete la estimación de un año adicional de educación, compare con (1) y explique la diferencia. 
+  
+```{r librerias, echo=TRUE, warning=FALSE, message= FALSE}
+library(haven)
+library(tidyverse)
+library(fixest)
+
+```
+
+```{r Wage2, echo=TRUE, message=FALSE, warning=FALSE}
+data<-read_dta("WAGE2.dta")
+
+```
+La especificación sugerida en el primer inciso:
+
+$$
+log(wage)=\beta_0+\beta_1 educ +e
+$$
+```{r model1, echo=TRUE, warning=FALSE, message=FALSE }
+#modelo sesgado 
+model<-feols(lwage ~ educ, data =data, vcov ="hc1")
+summary(model)
+```
+El output del modelo generado es el siguiente:
+
+$$
+log(wage)=5.973+0.06educ+e
+$$
+Este resultado implica que un año adicional de educación se asocia con un incremento aproximado del 6% (redondeo de 5.9839%) en el salario.
+Una variable omitida podría ser la habilidad innata. 
+
+En el modelo de regresión utilizado en el inciso (1), se omitieron variables que podrían influir tanto en la educación como en el salario; concretamente, la variable clave no incluida es la habilidad innata de los individuos.
+
+La omisión de la variable relevante como la habilidad innata genera el esgo de variable omitida, dependiendo de dos factores:
+
+- Una relación positiva entre habilidad innata y la educación, donde se esperaría que individuos con mayor habilidad innata tiendan a obtener más educación.
+- Un impacto positivo de la habilidad innata en los salarios.
+En este caso, ambos factores están presente, lo que implicaría un sesgo positivo. Es decir, la estimación de 0.060 para el coeficiente de de educación probablemente sobrestima el verdadero efecto causal de la educación en el salario, ya que captura parte del efecto de la habilidad innata.
+
+Incorporando IQ como variable proxy de habilidad innata en el modelo:
+
+$$
+log(wage)=\gamma_0+\gamma_1educ+\gamma_2IQ+e
+$$
+
+```{r, echo=TRUE, message=FALSE}
+modelo2<- feols(lwage ~educ + IQ, data =data, vcov ="hc1")
+summary(modelo2)
+```
+
+Es evidente que la inclusión de la variable IQ en el modelo, generó que el coeficiente de educ se reduciera significativamente de 0.06 a 0.039, corroborando la hipótesis de que el modelo simple sobrestimaba el retorno educativo debido a la omisión de variables relevantes.
