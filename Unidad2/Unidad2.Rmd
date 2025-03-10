@@ -2,14 +2,10 @@
 title: "Unidad 2: Modelo de regresión lineal muestral"
 subtitle: "Módulo 3: Modelamiento estadístico"
 author: "Iris Ashimine"
-output:
-  html_document:
-    theme: cerulean
-    toc: true
-    toc_depth: 3
-    toc_float: true
-    collapsed: true
-    number_sections: true
+output: 
+  prettydoc::html_pretty:
+    theme: cayman
+    toc: yes
 
 ---
 
