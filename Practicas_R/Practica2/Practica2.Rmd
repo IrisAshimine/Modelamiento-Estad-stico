@@ -1,0 +1,73 @@
+---
+title: "Práctica 2"
+output: github_document
+---
+Cargar las librerías necesarias
+
+```{r librerías, echo= TRUE, warning=FALSE, message=FALSE}
+library(AER)       # Econometría aplicada en R (provee conjuntos de datos y herramientas econométricas)
+library(tidyverse)   # Colección de paquetes para manipulación y visualización de datos
+library(ggplot2)     # Utilizado para crear gráficos
+library(dplyr)       # Manipulación de datos (seleccionar, filtrar, mutar, etc.)
+library(fixest) 
+library(psych)# Modelos econométricos (MCO, efectos fijos, etc.)
+rm(list=ls())
+```
+
+Cargar el conjunto de datos de las escuelas de California
+```{r carga de datos, echo=TRUE, warning=FALSE}
+data("CASchools")  
+?CASchools
+```
+Hacemos una descripción de los datos y sacamos el set de variables numéricas
+```{r describe, echo=TRUE, warning=FALSE}
+v <- setdiff(names(CASchools), c("district", "school", 
+                           "county", "grades"))
+Hmisc::describe(CASchools)
+```
+___Pregunta: Cuál es un buen modelo del efecto combinado de las otras variables sobre el rendimiento académico?___
+
+```{r corr, echo=TRUE, warning=FALSE}
+pairs.panels(CASchools[v]) 
+```
+
+`pairs.panel` muestra correlaciones en el triángulo superior, scatterplots en el triángulo inferior y el nombre de la varible junto a su distribución en la diagonal principal.
+
+Al ver esta gráfica notamos la necesidad de hacer ciertas modificaciones sobre los datos:
+
+  - El número de profesores no es la variable de interés, sino el número de estudiantes por profesor
+  - Computadoras tampoco es la variable de interés, sino el número de computadores por estudiante
+  - Las calificaciones de matemáticas y lectura estan altamente correlacionadas, es preferible reducirlas a una sola variable
+
+# Calcular la relación estudiante-profesor (cantidad de estudiantes por docente en cada distrito)
+  
+```{r nuevas variables, echo=TRUE, warning=FALSE}
+
+CASchools$str <- CASchools$students / CASchools$teachers
+CASchools$testscr <- (CASchools$read + CASchools$math) / 2 
+CASchools$compest<-CASchools$computer/CASchools$students
+```
+
+Ahora podemos volver a examinar las correlaciones entre los predictores y la variable dependiente
+
+```{r correlación, echo=TRUE}
+m1corr<-cor(CASchools$testscr, 
+            CASchools[c("str","lunch", "compest","expenditure", "income", "english")])
+t(round(m1corr,2)) 
+```
+
+Estimamos un modelo de regresión múltiple
+```{r modelo1, echo=TRUE, warning=FALSE}
+modelo1<-feols(testscr~str + lunch + compest + english, data = CASchools, vcov= "hc1")
+etable(modelo1)
+```
+**Interpretación**
+Las variables todas las variables son significativas al $5\%$ de nivel de significancia ($\alpha=0.05$), es decir, que la probabilidad de observar estos coeficientes cuando la hipótesis nula (los coeficientes son realmente 0) es verdadera, es muy improbable. 
+
+Cada coeficiente representa el cambio en el rendimiento *promedio* de los estudiantes cuando la variable independiente aumenta en una unidad, **manteniendo las demás constantes**.
+
+  - Intercepto: Si todas las variables explicativas fueran 0, la nota promedio sería 694.3
+  - `Str`: cada aumento de una unidad en la razón estudiante-profesor está asociado con una **disminución de 0.83 puntos en la nota promedio**. 
+  - `lunch`: Si el porcentaje de estudiantes que cualifican para el bono de comida aumenta en 1 punto porcentual, la nota promedio disminuye en 0.5446 puntos.
+  - `compest` : Cada aumento de una computadora por estudiante está asociado con un aumento de 17.66 puntos en la nota promedio. Sin embargo, el coeficiente es significativo solo al 10%.
+  -`english`: Si el porcentaje de estudiantes que no hablan inglés como lengua nativa aumenta en 1 punto porcentual, la nota promedio disminuye en 0.1116 puntos.
