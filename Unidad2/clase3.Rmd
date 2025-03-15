@@ -1,0 +1,299 @@
+---
+title: "Teoría asintótica y prueba de hipótesis"
+subtitle: "Módulo 3: Modelamiento estadístico"
+author: "Iris Ashimine"
+output: 
+  prettydoc::html_pretty:
+    theme: cayman
+    toc: yes
+---
+# Teoría Asintótica para la Regresión lineal^[Capítulo 7 de Hansen]
+¿Qué es la teoría asintótica y por qué nos interesa?¿Cuál es su utilidad en la práctica?
+
+La teoría asintótica es un marco de la estadística que estudia las propiedades de los estimadores (como el MCO) y de pruebas estadísticas cuando el tamaño de la muestra se aproxima al infinito ($N\rightarrow\infty$). Sirve para *justificar* por qué podemos hacer **inferencias estadísticas**, es decir, sacar conclusiones sobre la *población* basándonos en una *muestra*.
+
+Cuando trabajamos con muestras, nuestras estimaciones dependen del tamaño de estas. Si las muestras son *pequeñas* los estimadores pueden ser imprecisos. Sin embarog, la teoría asintótica nos dice que, a medida que el número de observaciones crece: 
+ - El estimador (MCO) se acerca cada vez más a los valores reales de la población, a esto se le llama ___consistencia___.
+ - Las distribuciones de los estimadores tienen a ser más normales, lo que nos permite construir intervalos de confianza y hacer pruebas de hipótesis sobre los coeficientes, a esto se lo conoce como __distribución asintótica normal___,
+
+
+
+## Consistencia
+
+Se dice que $\hat\beta$ es un estimador consistente de $\beta$ si al crecer el tamaño de muestra de manera indefinida ($N\rightarrow \infty$), el estimador se acerca al valor verdadero de $\beta$.
+
+$$
+plim\hat\beta=\beta 
+$$
+`plim` se refiere al **límite en probabilidad**. Intuitivamente, esto significa que conforme a la muestra crece, la probabilidad de que el estimador esté cerca del verdadero $\beta$ se acerca a 100\%. 
+
+En otras palabras, si tomamos muchas muestras grandes, las estimaciones de $\hat\beta$ se concentrarán cada vez más alrededor de $\beta$. 
+
+### Demostración
+
+Vamos a utilizar algunos conceptos estadísticos como la Ley (débil) de los Grandes Números (Weak Law of Large Numbers) y el Teorema de Mapeo Continuo (Continuous Mapping Theorem) para demostrar que el estimador $\hat\beta$ es un estimador consistente para el parámetro $\beta$.
+
+ 1. **Ley de los grandes números**
+ 
+ Dada una muestra i.i.d. de tamaño $N$, si $E|y|<\infty$ (si existe la esperanza de $y$), entonces cuando $N\rightarrow\infty$, 
+ 
+ $$
+ \frac{1}{N}\sum_{i=1}^{N}y_i\rightarrow^{p}E(y)
+ $$
+La media muestral *converge en probabilidad* a la esperanza^[Esta ley se extiende también para vectores aleatorios, es decir, si $y\equiv R^{mx1}$.]
+
+ 2. **Teorema de la función continua**
+ 
+Si tenemos una variable aleatoria $Z_N$ que converge en *probabilidad* a una constante $c$ cuando el tamaño de la muestra se aproxima a infinito $N\rightarrow\infty$, y una función $g(.)$ que es *continua* en la constante $c$, entonces se cumple que:
+
+$$
+g(z_N)\rightarrow^pg(c)\; cuando\; N\rightarrow\infty
+$$
+Es decir, la función de la variable aleatoria, converge en probabilidad a la función evaluada en la constante cuando $N\rightarrow\infty$. 
+
+Ahora podemos demostrar la consistencia de los estimadores MCO, consideremos que se desea estimar el siguiente modelo:
+$$
+y_i=\beta_0+\beta_1x_{1i}+e_i
+$$
+Donde $y_i$ es una variable aleatoria (escalar), $x_1i$ es un vector aleatorio de $K\times1$ y $e_i$ es una variable aleatoria (escalar).
+
+El estimador de $\hat\beta_1$ es entonces, primero hacemos un "paso intermedio" donde reordenamos nuestro estimador, reemplazando $y_i$ por el modelo original y simplificando un poco con álgebra; esto con el fin de tener el parámetro $\beta$ en la ecuación.
+
+\begin{align*}
+\hat\beta_1&=\frac{\frac{1}{N}\sum_{i=1}^N x_iy_i}{\frac{1}{N}\sum_{i=1}^N x_i^2}\\
+&=\frac{\frac{1}{N}\sum_{i=1}^N x_i(x_i\beta_1+e_i)}{\frac{1}{N}\sum_{i=1}^N x_i^2}\\
+&=\beta_1\frac{\frac{1}{N}\sum_{i=1}^Nx_i^2}{\frac{1}{N}\sum_{i=1}^Nx_i^2}+\frac{\frac{1}{N}\sum_{i=1}^Nx_ie_i}{x_i^2}\\
+&=\beta_1+\frac{\frac{1}{N}\sum_{i=1}^Nx_ie_i}{\frac{1}{N}\sum_{i=1}^Nx_i^2}\\
+
+\end{align*}
+
+A continuación hacemos uso de la ___Ley de los Grandes Números___ y ___Teorema de la Función Continua___ para encontrar la convergencia en probabilidad de la expresión.
+
+\begin{align*}
+&\beta_1\rightarrow^p\beta_1\;\text{porque es una constante}\\
+&\frac{1}{N}\sum_{i=1}^Nx_ie_i\rightarrow^p E[xe]\; por \; TFC+LGN\\
+&\frac{1}{N}\sum_{i=1}^Nx_i^2\rightarrow^p E[x^2]\; por \; TFC+LGN\\
+\end{align*}
+
+Unificando todo tenemos:
+
+\begin{align*}
+\hat\beta_1&\rightarrow^p\beta_1+\frac{E[xe]}{E[x^2]}\\
+&\rightarrow^p\beta_1+\frac{E[E[xe]|x]}{E[x^2]}\\
+&\rightarrow^p\beta_1+\frac{E[xE(e|x)}{E[x^2]}\\
+&\rightarrow^p\beta_1+\frac{E[x\cdot 0]}{E[x^2]}\\
+\hat\beta_1&\rightarrow^p\beta_1
+\end{align*}
+
+## Distribución Asintótica Normal
+
+En el segmento anterior demostramos que $\hat\beta$ converge en probabilidad a $\beta$, sin embargo, esto no describe la distribución del estimador. 
+La distribución asintótica sirve para describir cómo se comporta un estimador cuando el tamaño de la muestra crece indefinidamente. Esto nos permite construir **intervalos de confianza** y realizar **pruebas de hipótesis**. 
+
+Demostrar que un estimador $\hat\Theta$ tiene una distribución asintótica normal facilita realizar inferencia, debido a que aún cuando la distribución exacta de $\hat\Theta$ sea desconocida o compleja, podemos saber que cuando $N$ es grande, su distribución se aproximará a una ___normal___. 
+
+**Teorema Central del Límite**
+
+El Teorema Central del Límite (TLC)^[Conocido tambien como el teorema central de Linderberg-Lévy] es uno de los resultados esenciales de la estadística, nos dice que cuando tomamos muchas meustras *aleatorias* de un tamaño grande, el **promedio** de esas muestras sigue una ___distribución normal___, sin importar la distribución original de los datos de cada muestra individualmente. 
+
+Es decir, teniendo una variable aleatoria $y_i$ dada una muestra i.i.d. de tamaño $N$, si está definida su varianza $Var(y)<\infty$, entonces cuando $N\rightarrow\infty$,
+
+$$
+\sqrt{N}\frac{1}{N}\sum_{i=1}^N (y_i-E(y))\rightarrow^{d}Normal(0, Var(y))
+$$
+
+**Teorema de Slutsky**
+Si conocemos la convergencia en distribución de una secuencia de variables aleatorias $z_N\rightarrow^dz$ y la convergencia en probabilidad de otra $c_N\rightarrow^p c$, donde $c$ es una constante, cuando $N\rightarrow\infty$, entonces
+
+   1. $c_N + z_N\rightarrow^dc+z$
+ 
+   2. $c_Nz_N\rightarrow^d cz$
+ 
+   3. $\frac{z_N}{c_N}\rightarrow^d\frac{z}{c}$ si $c\neq0$.
+   
+### Demostración
+
+Por ___Teorema Central del límite___:
+$$
+\sqrt{N}(\hat\beta_1-\beta_!)\rightarrow^dNormal(0, V)
+$$
+Reemplazamos $\hat\beta_1$ por el paso intermedio desarrollado para demostrar consistencia:
+
+$$
+\sqrt{N}\left(\beta_1+\frac{\frac{1}{N}\sum_{i=1}^Nx_ie_i}{\frac{1}{N}\sum_{i=1}^Nx_i^2}-\beta_1\right)\rightarrow^dNormal(0, V)
+$$
+Simplificamos $\beta$
+
+$$
+\sqrt{N}\left(\frac{\frac{1}{N}\sum_{i=1}^Nx_ie_i}{\frac{1}{N}\sum_{i=1}^Nx_i^2}\right)\rightarrow^dNormal(0, V)
+$$
+
+Restamos *cero* en forma de $\frac{E[xe]}{E[x^2]}$ (se demostró en consistencia que esto es cero).
+
+$$
+\sqrt{N}\left(\frac{\frac{1}{N}\sum_{i=1}^Nx_ie_i}{\frac{1}{N}\sum_{i=1}^Nx_i^2}-\frac{E[xe]}{E[x^2]}\right)\rightarrow^dNormal(0, V)
+$$
+
+
+Ahora aplicamos el Teorema de Stlutsky. El numerador será $z_N$, es decir, buscaremos su convergencia en probabilidad:
+
+$$
+\sqrt{N}\left(\frac{1}{N}\sum_{i=1}^Nx_ie_i-E[xe]\right)\rightarrow^dNormal(0, Var(xe))
+$$
+Por **TCL**, ahora desarrollamos su varianza
+
+\begin{align*}
+Var[xe]&=E[(xe)^2]-(E[xe])^2\\
+&=E[x^2e^2]
+\end{align*}
+
+Desarrollamos $c_N$ que es el denominador, y buscamos su convergencia en *probabilidad*
+
+$$
+\frac{1}{N}\sum_{i=1}^Nx_i^2\rightarrow^pE[x^2]
+$$
+Por *LGN* y *TFC*.
+Unificamos la parte que converge en probabilidad y la que converge en distribución:
+
+$$
+\sqrt{N}\left(\frac{\frac{1}{N}\sum_{i=1}^Nx_ie_i}{\frac{1}{N}\sum_{i=1}^Nx_i^2}\right)\rightarrow^dNormal\left(0, \frac{E[x^2e^2]}{E[x^2]^2}\right)
+$$
+Obtuvimos la distribución normal asintótica del estimador MCO
+
+# Inferencia 
+
+Vamos a analizar como incorporar la influencia de la aleatoriedad muestral en el análisis de los resultados. Comenzando por el contraste de una restricción lineal sobre un parámetro.
+
+
+## Prueba de hipótesis
+
+Las pruebas de hipótesis son un procedimiento que nos sirve para tomar decisiones sobre una población basándonos en una muestra, en otras palabras, para hacer inferencia. Su objetivo principal es evaluar si existe *evidencia* **contraria** a una afirmación o *restricción* realizada sobre un parámetro.
+
+Ayuda a responder la pregunta: ¿Es el coeficiente de $\hat\beta_j$ distinto que cero en la población?
+
+Se propone que $\beta_j=\theta_0$, donde $\theta_0$ es una valor hipotético conocido, para nuestro ejemplo es 0.
+
+Entonces, la ___hipótesis nula___
+
+$$
+H_0:\beta_j =\beta_j,0
+$$
+La ___hipótesis alternativa___
+
+$$
+H_1:\beta_j\neq\beta_j,0
+$$
+En las pruebas de hipótesis, asumimos que existe un valor verdadero (pero desconocido) de $\beta_j$ y que este valor satisface o no la $H_0$. El objetivo de las pruebas de hipótesis es evaluar si $H_0$ es verdadera o no, preguntándose si es consistente con los datos observados.
+
+Al basar la **decisión** en los **datos**, se convierte en una *correspondencia* entre el espacio de la meustra y el conjunto de decisión. La muestra puede caer o en la zona de aceptación o en la zona de rechazo.
+
+Esta correspondencia se expresa como una función de valor real llamada ___estadístico de prueba___. 
+Otro concepto importante es el **valor crítico**, el cual se entiende como el umbral que determina si rechazamos o no $H_0$. Se obtiene de la distribución que siga nuestro estadístico y depende del tamaño del test $\alpha$.
+
+La ___regla de decisión___
+Teniendo un estadístico $T_N$, un valor crítico $c_\alpha$ y la regla de decisión es:
+    - No rechazar $H_0$ si $T_N\leq c_\alpha$,
+    - Rechazar $H_0$ si $T_N>c_\alpha$.
+
+El test estadístico más común (para las hipótesis de una dimensión) es sin duda el ___t-test___ en valor absoluto:
+
+$$
+|t_N|=|\frac{\hat\beta_j-\beta_j,0}{s.e.(\hat\beta_j)}|
+$$
+donde $s.e$ es el error estándar.
+
+Su gran ventaja es que su distribución asintótica no depende de parámetros desconocidos, por eso se lo denomina como un test *asintóticamente pivotal*.
+
+### Error tipo I
+
+![](D:/Universidad/ESTADISTICAS/Clase 3/error.png)
+
+El falso rechazo de la hipótesis nula $H_0$ (rechazar $H_0$ cuando es verdadero) se conoce como **Error tipo I**. La probabilidad de cometer este error se conoce como **tamaño del test**.
+
+$$
+P[Rechazar\;H_0|H_0\;verdad]=P[t_N>c|H_0\;verdad]
+$$
+Por eso, limitar o restringir el tamaño del test (esta probabilidad), reduce directamente la posibilidad de cometer error tipo I. De esta manera, los investigadores fijan el valor de $\alpha\in(0,1)$, con lo que se obtiene el valor crítico $c_\alpha$ de la distribución asintótica de $t_N$.
+
+$$
+|t_N|=|\frac{\hat\beta_j-\beta_j,0}{s.e.(\hat\beta_j)}|\rightarrow^d_{H_0}|Z|
+$$
+donde $Z\sim Normal(0,1)$, y su probabilidad acumulada $Pr(|Z|\leq)=2\phi(u)-1$.
+
+**Para un ejemplo común:**
+
+ - El valor crítico $c_\alpha=z_{1-\alpha/2}$ para una prueba de dos colas de tamaño $\alpha$. Si $\alpha=0.05$ (5\%), entonces $c_\alpha=z_{0.975}=1.96$.
+
+ - Rekga de decisión: Si $|t_N|>z_{0.975}$, rechazamos $H_0$. Cuando rechazamos $H_0:\beta_j=0$, solemos decir que $\beta_j$ es ___estadísticamente significativo___. 
+ 
+### Error tipo II
+La falsa aceptación de la hipótesis nula $H_0$ (aceptar $H_0$ cuando $H_1$ es la verdad) se conoce como *error tipo I*.
+
+$$
+\pi(\beta_j)=P[Rechazar\;H_0|H_1\; verdad]=P[t_N>c|H_1\; verdad]
+$$
+
+La probabilidad de rechazo bajo la hipótesis alternativa se llama **el poder del test**, y es igual a 1 menos la probabilidad de un error tipo II $1-\pi(\beta_j)$. Es decir, el poder mide la probabilidad de **rechazar correctamente la hipótesis nula cuando en realidad es falsa**. Un alto poder significa que la prueba es eficiente en la detección de efectos verdaderos.
+
+Sin embargo, existe un *"trade-off"* entre el tamaño del test y el poder del test:
+
+  - Si reducimos $\alpha$ (menos errores de tipo I), aumentamos el riesgo de cometer errores de tipo II, reduciendo el poder del test.
+  - Si aumentamos $\alpha$ (permitimos más errores de tipo I), aumentamos el poder del test, pero a costa de tener más *falsos positivos*.
+  
+Aún así, para estadísticos bien comportados, el **poder del test** aumenta con el tamaño de muestra, sin comprometer $\alpha$. 
+
+### Ejemplo
+
+Se desea probar un medicamento para la presión arterial
+
+  - $H_0$: el medicamento no tiene efecto.
+  
+  - $H_1$: El medicamento reduce la presión arterial.
+
+**Escenario 1:** $\alpha=0.01$
+
+  - Sólo se rechaza $H_0$ si el medicamento reduce mucho la presión (efecto grande). 
+  
+  - Consecuencia: se reduce el riesgo de producir un medicamento que realmente no funciona (reduce error tipo I), pero aumenta la probabilidad de no detectar un medicamento con efecto real (error tipo II), pero de baja potencia o que haya sido probado en muy pocas personas (N pequeño).
+  
+**Escenario 2:** $\alpha=0.15$
+
+  - Se acepta más evidencia para rechazar $H_0$
+  - Consecuencia: aumenta la probabilidad de detectar un efecto si el medicamento realmente funciona (mayor poder del test), pero también se corre el riesgo de producir un medicamento no efectivo (mayor error tipo I).
+
+## Significancia estadística
+
+Realizar las pruebas requiere seleccionar un nivel de $\alpha$, sin embargo, no hay una ciencia objetiva sobre cómo se elige. La práctica más común es establecer $\alpha=0.05(5\%)$, o $0.01$ e inclusive $0.1$. 
+
+La razón no formal detrás de establecer el **nivel de significancia** al $5\%$, es para evitar en lo posible el Error de Tipo I. La decisión “Rechazar $H_0$” significa que la evidencia es inconsistente con la hipótesis nula en el sentido de que es relativamente improbable (1 en 20) que los datos generados por la hipótesis nula produzcan el estadístico observado. 
+
+En cambio, la decisión "Aceptar $H_0$" no es una afirmación contundente. No significa que la evidencia respalde $H_0$, sino que no hay suficiente evidencia en los datos para rechazarla. Por ello, es más preciso usar la etiqueta "No rechazar $H_0$" en lugar de "Aceptar $H_0$". 
+
+Cuando una prueba acepta una hipótesis nula (cuando no es estadísticamente significativa), una interpretación errónea es decir que esto demuestra que la hipótesis nula es verdadera. No poder rechazar la hipótesis nula, no es evidencia de que sea verdadera.
+
+No confundir **"No hay evidencia de efecto" con "Evidencia de que no hay efecto"**. Recordemos que rechazar $H_0$ puede ocurrir por dos motivos: $H_0$ es verdad o el test no tiene suficiente **poder** para detectar el verdadero efecto, por tanto, *si se desconoce el poder del test*, no es posible distinguir entre estos dos escenarios. 
+
+Por ejemplo, un estudio con un $\alpha=0.05$ pero con un poder de 10\%, tiene 90\% de probabilidad de no detectar un efecto *verdadero*. En este caso, un resultado de "no significancia" no tiene sentido. 
+
+___"La ausencia de evidencia no es evidencia de ausencia".___
+
+## P-Valor 
+
+Intuitivamente, el p-valor responde a la pregunta: 
+*"Si la hipótesis nula fuera cierta, ¿qué tan probable es obtener un resultado tan extremo o más extremo que el observado en la muestra?"*
+
+Si el p-valor es **muy pequeño**, significa que el resultado que hemos obtenido es poco probable bajo $H_0$, lo que sugiere que $H_0$ no es una buena explicación de los datos.
+
+Formalmente, es p-valor es una probabilidad que se define como:
+
+$$
+p_v=P(t>t_N)\;donde\; t_N\rightarrow^d_{H_0}t
+$$
+donde $t_N$ es el estadístico observado calculado a partir de la muestra de tamaño $N$, $t$ es la distribución asintótica de $t_N$ bajo la hipótesis nula $H_0$.
+
+Por tanto, la regla de decisión es:
+
+  - Si $p_v\leq\alpha$, rechazamos $H_0$, por que el resultado es muy improbable bajo la hipótesisi nula.
+  - Si $p>\alpha$, no rechazamos $H_0$ porque no tenemos evidencia para rechazarla. 
+  
+
