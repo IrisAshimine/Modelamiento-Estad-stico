@@ -15,6 +15,7 @@ El curso de Modelamiento Estadístico tiene como objetivo proporcionar las herra
 - [Unidad 3](https://htmlpreview.github.io/?https://github.com/IrisAshimine/Modelamiento-Estad-stico/blob/main/Unidad3/Clase4.html)
 - [Unidad 4](https://htmlpreview.github.io/?https://github.com/IrisAshimine/Modelamiento-Estad-stico/blob/main/Unidad4/clase5.html)
 - [Unidad 5](https://htmlpreview.github.io/?https://github.com/IrisAshimine/Modelamiento-Estad-stico/blob/main/Unidad5/Clase7.html)
+      - [Clase 8](https://htmlpreview.github.io/?https://github.com/IrisAshimine/Modelamiento-Estad-stico/blob/main/Unidad5/Clase8.html) 
   ## Prácticas en R:
 - [Práctica 1](https://htmlpreview.github.io/?https://github.com/IrisAshimine/Modelamiento-Estad-stico/blob/main/Practicas_R/Practica1/practica1.html)
 - Datos: [Wage](https://github.com/IrisAshimine/Modelamiento-Estad-stico/blob/main/Practicas_R/Practica1/WAGE2.DTA)
