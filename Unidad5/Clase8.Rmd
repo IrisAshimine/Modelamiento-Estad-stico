@@ -1,0 +1,464 @@
+---
+title: "Unidad 5: Modelos Lineales Generalizados pt.2"
+subtitle: "Modelamiento estadístico"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+    toc: true
+    number_sections: true
+    float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+```{r, include=FALSE}
+library(readr)
+```
+
+# Ejemplo: Regresión logit y probit
+Haciendo uso de la base de datos Titanic. Se desea estimar un modelo para predecir la probabilidad de supervivencia en dicho evento, condicional a ciertas variables demográficas (edad, sexo) y a la "clase" (1ra, 2da o 3ra) en la que viajaban los pasajeros. 
+
+$$
+survived_i=\beta_0+\beta_1 age +\beta_2 fem +\beta_3 Class
+$$
+Descargamos la base de datos y cambiamos los nombres a las variables, porque sus nombres originales eran demasiado largos
+
+```{r,warning = FALSE, message = FALSE }
+Titanic<-read_csv("https://stanford.io/2O9RUCF")
+colnames(Titanic) <- c("Survived", "Class","name", "Sex", "Age", "Parents", "Siblings", "Fare")
+
+str(Titanic)
+```
+
+Creamos una variable dummy para el género femenino y convertimos la variable "class" en una variable categórica
+```{r}
+Titanic$Fem <- ifelse(Titanic$Sex == "female", 1, 0)
+Titanic$Class<- as.factor(Titanic$Class)
+```
+
+Iniciamos ajustando el modelo con una regresión MCO
+
+```{r}
+# Regresión MCO
+surv_ols<-lm(Survived ~ Age + Fem + Class, data = Titanic)
+summary(surv_ols)
+```
+
+La ventaja de las regresiones MCO es la fácil interpretación de los coeficientes, puesto a que simplemente representan cambios porcentuales. Podemos interpretar que ser mujer incrementa la probabilidad de superviviencia en 49% en comparación a los pasajeros varones; pertenecer a la 3ra clase está asociado a una probabilidad 38% inferior de supervivencia en comparación a los pasajeros de primera clase. 
+
+Sin embargo, la fácil interpretación es la *única* ventaja que posee estimar mediante MCO una variable binaria. Por ello, estimamos a continuación un modelo logístico. 
+```{r}
+# Regresgión logit
+surv_logit<-glm(Survived ~ Age  + Fem + Class, data = Titanic, family=binomial(link='logit'))
+summary(surv_logit)
+```
+Recordemos que la interpretación directa de estos coeficientes no es muy intuitiva o sencilla de comprender (cambio en el logaritmo de la razón de probabilidades), pero sí nos dan una idea de el signo de la relación. 
+
+Podemos ver que ser mujer está asociado positivamente con la probabilidad de supervivencia, el incremento de la edad negativamente, y pertenecer a la segunda o tercer clase están asociados negativamente a la probabilidad de superviviencia en comparación a la de los pasajerosde 1era clase. 
+
+Algo más intuitivo y general es interpretar directamente la Razón de Probabilidades, para ello aplicamos la función exponencial base $e$: 
+
+```{r}
+exp(coef(surv_logit))
+```
+  - Las mujeres tienen una probabilidad de supervivencia 13 veces superior a la de los hombres
+  - Un año más de edad está asociado con la disminución de la probabilidad a favor de sobrevivir sobre la de no sobrevivir de 4%
+  - Los pasajeros de la 2da clase tienen 1/3 de la probabilidad de supervivencia en comparación a la de los pasajeros clase 1
+  - El ser pasajero de 3ra clase disminuye la probabilidad a favor de sobrevivir sobre la de no sobrevivir en 92% en comparación a los de clase 1. 
+  
+Por si estos resultados aún son difíciles de comprender, dado que no hablamos de probabilidades como tal, si no de la relación entre la probabilidad a favor y la probabilidad en contra de sobrevivir, se puede calcular el efecto marginal promedio.
+
+```{r}
+library(margins)
+library(jtools)
+logitmar<-margins(surv_logit) #AME
+export_summs(surv_ols,logitmar)
+```
+
+En promedio, ser mujer incrementa la probabilidad de haber sobrevivido en 38%. El pertenecer a la 2da clase está asociado a una probabilidad de sobrevivir 21% inferior en comparación a los de la clase 1.
+
+Ahora ajustaremos un modelo probit
+
+```{r}
+surv_probit<-glm(Survived ~ Age  + Fem + Class, data = Titanic, family=binomial(link='probit'))
+summary(surv_probit)
+```
+En el caso de los modelos probit, debido a que la función de enlace es la Función de Probabilidad Acumulada de una distribución normal, ya no podemos interpretar los coeficientes de manera directa. Por tanto, vamos a calcular el efecto marginal promedio de esta regresión, y mostraremos los tres modelos: MCO, logit y probit. 
+```{r}
+probitmar<-margins(surv_probit) #AME
+export_summs(surv_ols,logitmar, probitmar)
+```
+Los coeficientes de efectos marginales promedio para los modelos probit y logit son bastante similares. 
+
+```{r}
+export_summs(surv_ols, surv_logit, surv_probit)
+```
+Si vemos las medidas de bondad de ajuste, basándonos únicamente en el pseudo $R^2$, ambos modelos tienen el mismo poder predictivo. Sin embargo, tomando en cuenta los criterios de información Bayesianos y de Akaike, el modelo logit parece ser el modelo más adecuado para modelar la probabilidad de supervivencia en el Titanic. 
+## Matriz de confusión 
+
+Una matriz de confusión es una tabla que se utiliza para evaluar el rendimiento de un modelo de clasificación. Proporciona un desglose detallado de las predicciones del modelo en comparación con los resultados reales, lo que ayuda a identificar dónde está cometiendo errores el modelo. 
+
+Esta matriz depende de un valor de corte, que es **el umbral de probabilidad** que usará la matriz para clasificar una observación como positiva (=1) o negativa (=0). El valor de corte usual es el 50%. 
+
+Primero guardamos la predicciones de cada modelo en la base de datos
+```{r}
+#Guardar predicciones con ambos modelos
+Titanic$logit_prob <- predict(surv_logit, type = "response")
+Titanic$probit_prob<- predict(surv_probit, type = "response")
+```
+
+En la librería `caret` se encuentra la función `confusionMatrix`. Iniciamos con la matriz de confusión del modelo logit, estableciendo el punto de corte en 50%
+```{r}
+library(caret)
+Titanic$no_optimalpred <- ifelse(Titanic$logit_prob>= 0.5, 1, 0)
+conf_matrix <- confusionMatrix(as.factor(Titanic$Survived), as.factor(Titanic$no_optimalpred))
+print(conf_matrix)
+```
+Además de la tabla, podemos ver ciertos indicadores adicionales: 
+
+  - Exactitud (accuracy): es el porcentajede aciertos del modelo. 
+  
+  - Sensibilidad: La sensibilidad mide la proporción de casos que realmente son positivos y que la prueba identifica correctamente como positivos.Una sensibilidad alta indica que la prueba es buena para detectar positivos, pero también puede arrojar más falsos positivos.
+  
+  - Especificidad: La especificidad mide la proporción de verdaderos negativos que la prueba identifica correctamente como negativos. Una alta especificidad indica que la prueba es buena para identificar correctamente los casos negativos, pero también puede pasar por alto algunos verdaderos positivos.
+  
+```{r}
+Titanic$no_optimalpred <- ifelse(Titanic$probit_prob>= 0.5, 1, 0)
+conf_matrix <- confusionMatrix(as.factor(Titanic$Survived), as.factor(Titanic$no_optimalpred))
+print(conf_matrix)
+```  
+El modelo probit tiene un mejor poder predictivo, su porcentaje de aciertos es ligeramente superior al del modelo logit. 
+
+# Regresión Multinomial
+
+La regresión multinomial es un tipo de modelo de regresión utilizado cuando la variable dependiente es categórica y tiene más de dos categorías. Este modelo se utiliza para predecir la **probabilidad** de que una observación  pertenezca a una de varias categorías posibles, condicional a ciertos factores $x$.
+
+La regresión multinomial es útil cuando se tiene una variable dependiente con más de dos categorías que no tienen un orden natural (es decir, no son variables ordinales). 
+
+Dado un conjunto de catergorías $c_1,c_2,...,c_k$ para una variable dependiente $y$, y un conjunto de variables independientes $x$, el modelo multinomial estima la probabilidad de que una observación pertenezca a cada categoría de la variable dependiente, condicionado por los valores de las variables independientes. 
+
+El modelo multinomial compara la categoría de interés con una categoría de referencia (usualmente una categoría base). 
+
+Formalmente se define como: 
+
+$$
+log(\frac{p(y=c_j)}{p(y=c_0)})=\beta_{j1}x_1+\beta_{j2}x_2+...+\beta_{jk}x_k
+$$
+Donde:
+  - $y$ es la variable dependiente con $k$ categorías
+  -$p(y=c_j)$ es la probabilidad de que la observación pertenezca a la categoría $c_j$.
+  - $c_0$ es la categoría de referencia
+  - $\beta_{j1},...,\beta_{jk}$ son los coeficientes estimados para cada categoría $c_j$
+  - $x_1,...,x_k$ son las variables que afectan la probabilidad de cada categoría
+  
+## Estimación 
+
+La regresión multinomial, es una extensión de la regresión logística utilizada para variables binarias, por lo que su estimación también se realiza mediante MLE. 
+
+En vez de modelar la probabilidad de tan un par de resultados (0 y 1), es modelan todos los pares posibles de comparaciones como número de categorías tenga la variable dependiente. Es decir, si $y$ tiene $k$ categorías, se realizan $k-1$ modelaciones. 
+
+Por ejemplo, si $k=3$, las posibilidades son 6: (1,2) (1,3)(2,3)(2,1)(3,1)(3,2), la mitad de estas comparaciones son iguales, lo que nos deja con 3 modelos, pero como consideraremos una categoría como base, solo necesitamos $k-1=2$ modelos.  
+
+## Interpretación 
+
+La interpretación de este modelo depende de qué categoría se considera como la referencia o el "numerador". Usualmente esta categoría es la más frecuente, o la más pequeña. 
+
+### Log-Odds
+
+La salida estándar de la regresión es el logarítmo de la razón de probabilidades: 
+
+"*Un cambio de una unidad de $x$ se asocia con un cambio $\beta$ en el logaritmo de la razón de probabilidades de estar en la categoría $c_j$ en comparación con la categoría $c_0$"*
+
+### Razón de riesgo relativo
+
+Equivalente a la razón de probabilidades *"Odds"* en la regresió logística. Se calcula como el coeficiente exponenciado $e^{\beta_j}$:
+
+*"Un cambio de una unidad en $x$ se asocia con un cambio $(e^\beta)-1$ en el "riesgo" de estar en la categoría $c_j$ en comparación con la categoría $c_0$."*
+
+
+## Ejemplo: Elección de programa universitario
+
+```{r}
+library(nnet)
+library(stargazer)
+library(foreign)
+programa <- read.dta("https://stats.idre.ucla.edu/stat/data/hsbdemo.dta")
+head(programa)
+
+```
+```{r}
+levels(programa$prog)
+```
+
+Elegimos la categoría base
+
+```{r}
+programa$academ<-relevel(programa$prog, ref = "academic")
+mult.mod1<-multinom(academ~ses+write, data =programa)
+summary(mult.mod1)
+```
+Tenemos todas las comparaciones con respecto al programa "académico". No podemos ver si los coeficientes son significativos
+
+```{r, warning=FALSE}
+
+stargazer(mult.mod1, type="text", report = ("vc*p"))
+```
+Podemos ver que "write" y tan solo la categoría "seshigh" son significativas. Es decir, ser de estatus socioeconómico medio o bajo no tiene un efecto sobre la elección de programa, pero sí ser de estatus socioeconómico alto. 
+
+Estos coeficientes son el logaritmo de la razón de probabilidad, por lo que la única interpretación que podemos sacar de ellos son los signos. 
+
+  - Hay un efecto negativo de estar en el progama "general" y ser de "altos ingresos"
+
+  - Las personas con altos ingresos tienen menor probabilidad de pertenecer al programa "general" que al programa "académico" en comparación a las personas de bajos ingresos. 
+
+  - La probabilidad de pertenecer al programa vocacional es menor que la de pertenecer al programa académico para personas de altos ingresos en comparación con las personas de bajos ingresos. 
+
+  - Una mejor puntuación en escritura está asociado con menos probabilidad de pertenecer al programa general o al programa vocacional en comparación con pertenecer al programa académico. 
+
+Ahora interpretamos la razón de probabilidades (que tiene más sentido)
+
+```{r}
+exp(coef(mult.mod1))
+```
+  - Si ODD< 1 quiere decir que la relación es negativa
+  - Si ODD>1 quiere decir que la relación es positiva
+
+No interpretaremos "sesmiddle" porque sabemos que no es significativa. 
+
+**Programa general**
+
+  - `seshigh` : $0.31$ la probabilidad en favor de estar en el programa "general" es aproximadamente 1/3 de la de estar en el "académico" para un estudiante de estatus económico alto en comparación a uno de estatus economico bajo.
+  - `write`: $0.94$ un aumento en la nota de escritura disminuye la probabilidad a favor de estar en el programa general vs programa académico en 6%.
+
+**Programa vocacional**
+  - `seshigh`: $0.37$ el ser de estatus económico alto disminuye la probabilidad en favor de estar en el progama vocacional en comparación a la probabilidad de estar en el programa académico en 62% en comparación a ser de estatus económico bajo
+  - `write`: $0.89$ un aumento en la nota de escritura disminuye en 11% la probabilidad en favor de estar en el programa vocacional vs la probabilidad de estar en el programa académico. 
+  
+### Bondad de ajuste
+
+```{r}
+library(DescTools)
+ PseudoR2(mult.mod1, which = c("CoxSnell","Nagelkerke","McFadden"))
+```
+Estos son los pseudo $R^2$
+
+  - McFadden se calcula como $1-\frac{LL_u}{LL_0}$, la relación entre la log-verosimilitud del modelo con todas las independientes vs. un modelo con solo el intercepto
+  
+  - Cox y Snell imitan más al $R^2$ de una regresión múltiple, la interpretación de Cox sería: "el 21% de la variabilidad de la variable dependiente puede ser explicada por el modelo logístico"
+  
+  - Negelkerke indica la relación entre los predictores y su predicción
+
+
+# Distribución de Poisson 
+
+La distribución de Poisson es una distribución de probabilidad **discreta** que describe el *número de eventos* que ocurren en un intervalo de *tiempo o espacio fijo*, bajo ciertas condiciones. Es utilizada para modelar eventos infrecuentes que ocurren de manera **aleatoria** y no dependen de eventos anteriores. Si tenemos una variable aleatoria $y$ que sigue la distribución de poisson con parámetro $\lambda$ que es la tasa de ocurrencia de eventos, la función de probabilidad sería: 
+
+$$
+P(y_i=k)=\frac{e^{-\lambda}\lambda^{k}}{k!}
+$$
+
+  - $\lambda$ es el **número esperado de eventos** en un intervalo de tiempo o especio determinado.
+  - $k$ es el número de eventos observados (un valor entero **no negativo**).
+  
+## Características
+
+![Distribución Poisson](D:/Universidad/ESTADISTICAS/Clase 8/poisson.png)
+
+- La media y la varianza de una distribución de Poisson son ambas iguales a $\lambda$.
+
+- La distribución de Poisson es especialmente útil para modelar **eventos raros** en intervalos de tiempo o espacio, como accidentes de tráfico.
+
+- Para valores pequeños de $\lambda$, la distribuciónde Poisson se *sesga hacia la derecha*, esto debido a que tanto la media y varianza son iguales a $\lambda$, por tanto si $\lambda$ es cercano a cero, la mayor parte de la masa de probabilidad se concentrará cercano a cero, con una cola larga hacia la derecha. 
+
+- A medida que $\lambda$ crece, la distribución se aproxima a una normal. Esto sucede porque cuando $\lambda$ crece, también lo hacen la media y la varianza, por tanto la distribución se vuelve más simétrica. 
+
+## Ejemplo 
+
+**Número de accidentes de tráfico en una carretera**: Si en promedio ocurren 2 accidentes de tráfico por mes en una carretera determinada, la distribución de Poisson puede modelar el número de accidentes en cualquier mes. 
+Si $\lambda=2$, la probabilidad de que ocurran exactamente 3 accidentes en un mes es:
+
+$$
+P(x=3)=\frac{2^3e^{-2}}{3!}=0.1804
+$$
+La probabilidad de que ocurran **3** accidentes en un mes es de aproximadamente 18%. 
+
+# Regresión de Poisson
+
+La regresión de Poisson es un tipo de modelo utilizado cuando la variable dependiente es un conteo de eventos que ocurren en un intervalo de tiempo o espacio determinado, y estos eventos siguen una distribución de Poisson. Es decir, se utiliza cuando el objetivo es modelar el número de veces que ocurre un evento raro o infrecuente en un periodo determinado, bajo ciertas condiciones.
+
+Consideremos los siguientes ejemplos: 
+
+  - ¿Están relacionados el número de muertes por accidentes en motocicleta en un año con las leyes sobre los cascos?
+  
+  - ¿Difiere el número de visitas a urgencias relacionadas con problemas de asma según los índices de calidad del aire?
+  
+  - ¿Tienen efecto las publicidades de Facebook sobre el número de visitas diario a una página web?
+  
+Cada uno de los ejemplos implica predecir una variable (respuesta) mediante una o más variables explicativas, aunque en estos ejemplos las variables dependientes son conteos por unidad de tiempo o espacio. 
+
+Dado que la variable dependiente es un conteo, su valor mínimo es cero y, en teoría, su máximo es ilimitado. 
+
+La regresión de Poisson asume que la variable dependiente $y$ es un conteo, y la tasa de ocurrencia $\lambda$ es una **función exponencial** de las variables independientes: 
+
+$$
+\lambda_i=exp(\beta_0+\beta_1 x_{i1}+\beta_2 x_{i2}+...+\beta_k x_{ik})
+$$
+Lo que se trata de modelar entonces es el parámetro $\lambda$, el número de ocurrencias promedio por unidad de tiempo o espacio como una función de una o más covariables. Para el ejemplo de las muertes por accidentesen motocicleta, estaríamos interesados en mostrar como la variabilidad de $\lambda$ puede ser explicada por las leyes sobre los cascos. 
+
+**Supuestos**
+
+1. La variable dependiente o de respuesta sigue una distribución de Poisson
+2. Las observaciones son **independientes** entre sí
+3. Por su definición, $E(y)=Var(y)$ 
+4. El logaritmo de la tasa $\lambda$ debe ser una función lineal de $x_k$
+
+$$
+log(\lambda_i)=\beta_0+\beta_1 x_{i1}+\beta_2 x_{i2}+...+\beta_k x_{ik}
+$$
+
+## Estimación mediante MLE
+
+Dado que la variable dependiente $y$ sigue una distribución de Poisson, la función de verosimilitud es el producto de las funciones de probabilidad individuales de poisson para cada observación: 
+
+$$
+L(\beta_0,\beta_1,...,\beta_k)=\prod_{i=1}^N\frac{\lambda_i^{y_i}e^{-\lambda_i}}{y_i!}
+$$
+Donde $\lambda=exp(x'\beta)$, es la tasa de ocurrencia **predicha por el modelo**. Por tanto, la log verosimilitud se obtiene tomando el logartimo natural:
+
+
+$$
+
+l(\beta_0,\beta_1,...,\beta_k)=\sum_{i=1}^{N}[y_i log(\lambda_i)-\lambda_i-log(y_i!)]
+$$
+
+La estimación de los parámetros se obtiene **maximizando** la función anterior. 
+
+## Ejemplo 1: Bebidas en un fin de semana
+
+En este ejemplo veremos una aplicación real analizando datos de una encuesta realizada a estudiantes de un curso de estadísticas. 
+
+La encuesta incluía la pregunta: ¿Cuántas bedidas alcohólicas consumió el fin de semana pasado? 
+
+El propósito de la encuesta era explorar los factores relacionados con el consumo de alcohol en el campus de la universidad. 
+
+Entre las variables tenemos:
+  - `drinks` el número de bebidas alcohólicas consumidas
+  - `dorm` categórica con el nombre del lugar donde vive e igual a `off.campus` si el estudiante vive fuera de campus
+  - `sex` categórica `f`=mujer, `m`=hombre
+  - `first_year` dummy =1 si es estudiante de primer año
+  
+```{r weekend, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(readr)
+df<-read_csv("D:/Universidad/ESTADISTICAS/Clase 8/weekendDrinks.csv")
+head(df)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+set.seed(777)
+df$first_year <- ifelse(df$drinks == 0 & df$sex == "f" & runif(nrow(df))<0.1, 1, 0)
+```
+
+
+```{r cambiar variables}
+df$fuera<-ifelse(df$dorm=="off campus",1,0)
+df$hombre<-ifelse(df$sex=="m",1,0)
+head(df)
+```
+Ahora tenemos que graficar nuestra variable dependiente $drinks$ para ver si sigue una distribución de Poisson
+
+```{r histograma, warning=FALSE}
+# Crear un histograma de la variable dependiente "drinks" y superponer una curva de Poisson
+ggplot(df, aes(x = drinks)) +
+  geom_histogram(bins=30, color = "black", fill = "orange")  +
+  labs(title = "Distribución de Bebidas Alcohólicas Consumidas en el Fin de Semana",
+       x = "Número de Bebidas Consumidas",
+       y = "Densidad") +
+  theme_classic()
+
+```
+
+```{r poisson ficticia, warning=FALSE}
+poisson_data<- data.frame(x= rpois(1000, lambda = 2))
+
+ggplot(poisson_data, aes(x = x)) +
+  geom_histogram(bins=20, color = "black", fill = "orange")  +
+  labs(title = "Distribución variable Poisson",
+       x = "Variable de conteo",
+       y = "Densidad") +
+  theme_classic()
+```
+
+Explorando los datos es notorio que existe un número excesivo de ceros en nuestra variable `drinks`, esto se debe a que el cero en la encuesta incluye tanto a personas que beben habitualmente como a **no bebedores**. El problema de no poder distinguirlos es que el análisis se enfoca en explorar factores que afectan al número de bebidas alcohólicas, pero para los no bebedores, este valor es siempre cero.
+
+Por lo que se definirá a $\lambda$ como el número promedio de bebidas *entre las personas que beben*, y definiremos un parámetro $\alpha$ adicional que es la proporción de los *no bebedores*. Este tipo de modelos se conoce como **modelo de Poisson No Inflado** o **ZIP** por su sigla en inglés (Zero Inflated Poisson.)
+
+Primero haremos un modelo de poisson simple
+
+```{r poisson 1, warning=FALSE}
+pois.m1<-glm(drinks~fuera + hombre, family = poisson, data= df)
+summary(pois.m1)
+```
+Para interpretar los coeficientes, los exponenciamos (recordemos que están calculados como $log(\lambda)$)
+
+```{r exp coef, warning=FALSE}
+exp(coef(pois.m1))
+```
+Nuestros coeficientes dan significativos, la interpretación: 
+
+
+  - $\beta_0$ el intercepto es la tasa esperada de bebidas alchólicas consumidas en un fin de semana para un estudiante que vive en el campus y es mujer. Por tanto, el número esperado de bebidas alcohólicas consumidas en un fin de semana por una estudiante que vive en el campus y es mujer es aproximadamente 1.13 bebidas.
+  
+  - $\beta_1=2.45$ los estudiantes que viven fuera del campus tienen un consumo de bebidas alcohólicas 2.45 veces mayor en comparación a los estudiantes que viven dentro del campues
+  
+  - $\beta_2=3.05$ ser varón está asociado a tener un cosumo de bebidas alcohólicas 3.05 veces superior en comparación al número de bebidas consumidas por las mujeres. 
+  
+
+Sacamos la medida de bondad de ajuste
+
+```{r bondad de ajuste}
+bondad.pvalue<-1-pchisq(pois.m1$deviance, pois.m1$df.residual)
+bondad.pvalue
+```
+Este test utiliza las desviaciones del modelo con respecto a los datos, mientras más grande son las desviaciones, menos se ajusta el modelo. ¿Pero cuán grande tienen que ser estas desviaciones?
+Para ello utilizamos un test de $\chi^2$ que calcula **la probabilidad de observar desviaciones tan grandes como las de este modelo (o más) si el modelo tubiera un ajuste perfecto.**
+
+  - El número de grados de libertad son el número de residuos o $N-k$, donde $k$ son los parámetros calculados. 
+  
+  - Utiliza una distribución $\chi^2$ porque es la aproximación que mejor funciona para datasets grandes. 
+
+La $H_0$: El modelo tiene un buen ajuste, $H_1$ el modelo no tiene un buen ajuste. 
+
+En nuestro caso $p<0.05$ por tanto existe evidencia de un mal ajuste a los datos. 
+
+Las dos variables dependientes son estadísticamente significativas, pero el test de bondad de ajuste revela que existe una falta de ajuste (desviación del residuo: 230) y p value < 0.001. En ausencia de una variable explicativa importante faltante, este poco ajuste puede explicarse por la presencia de un grupo de *no bebedores*. 
+
+Para poder tener un modelo de regresión que toma en consideración un número inflado de ceros por los *no bebedores*, se deben considerar dos partes:
+
+  - La primera, es el modelo que asocia el número de bedidas alcohólicas consumidas con los predictores **para las personas que beben**.
+  
+  - La segunda parte, utilizar un `first_year` como predictor de $\alpha$, la proporción de estudiantes que no beben en los ceros reportados. 
+  
+  $$
+  logit(\alpha)=\beta_0+\beta_1 first\_year
+  $$
+por tanto, como $\alpha$ es una variable binaria, estimaremos mediante un **logit** la probabilidad de ser una persona que no consume bebidas alcohólicas. 
+
+### Modelo ZIP
+
+Debido a que no tenemos información crucial (qué porcentaje de los que reportaron cero bebidas no bebe en general) utilizaremos el modelo ZIP, que es un caso especial de un modelo estadístico llamado "modelo de variable latente". Básicamente, se trata de eliminar de la distribución delos datos observados algunos de los ceros reportados, correspondiente a los no bebedores, por lo cual, a partir de esta nueva distribución **depurada** es posible calcular un $\lambda$ más razonable. 
+
+```{r zip, warning=FALSE, message=FALSE}
+library(pscl)
+zip.m2 <- zeroinfl(drinks ~ fuera + hombre| first_year, 
+                   data = df)
+summary(zip.m2)
+```
+En este caso, la variable que utilizamos para predecir $\alpha$ resultó ser no significativa, por lo que necesitamos probar con otra variable que pueda hacerlo. Sin embargo, en esta base de datos no contamos con una así. 
+
+```{r}
+exp(coef(zip.m2))
+```
+
